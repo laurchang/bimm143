@@ -1,0 +1,313 @@
+---
+title: "class06"
+author: "Laurie Chang A16891192"
+date: 25 January 2024
+format: pdf
+editor: visual
+---
+
+## R Functions
+
+Functions are how we get stuff done. We call functions to do everything useful in R.  
+One cool thing about R is that it makes writing your own functions comparatively easy.
+
+All functions in R have at least three things:
+
+1.  a **name** (we get to pick this)
+2.  one or more **input arguments** (the input to our function)
+3.  the **body** (lines of code that do the work)
+
+```{r}
+#| eval: FALSE
+
+funname <- function(input1, input2) {
+  # the body with R code
+}
+```
+
+Let's write a silly first function to add 2 numbers:
+
+```{r}
+x <- 5
+y <- 1
+x + y
+```
+
+```{r}
+addme <- function(x,y) {
+  x + y
+}
+```
+
+```{r}
+addme(1,1)
+```
+
+```{r}
+addme <- function(x,y = 1) {
+  x + y
+}
+```
+
+```{r myfun}
+addme(10)
+```
+
+## Lab for today
+
+Write a function to grade student work from class.
+
+Start with a simplified version of the problem.
+```{r}
+# Example input vectors to start with
+student1 <- c(100, 100, 100, 100, 100, 100, 100, 90)
+student2 <- c(100, NA, 90, 90, 90, 90, 97, 80)
+student3 <- c(90, NA, NA, NA, NA, NA, NA, NA)
+```
+
+Let's just find the average.
+
+
+```{r}
+mean(student1)
+
+mean(student2)
+
+```
+
+Student 2 gives a NA, why? NA is in the sequence!
+
+Let's try using the `na.rm` argument in order to get rid of the NAs in the sequence.
+
+```{r}
+mean(student2, na.rm = TRUE)
+mean(student3, na.rm = TRUE)
+```
+
+The third student only had one assignment turned in but their average was a 90; is that fair? No! Student 3 should not have a mean of 90!
+
+This argument is not useful in this case as we want to only remove the lowest score they have. This argument removes all the NAs (even if there is more than 1).
+
+Come back to this NA problem. But things worked for `student1`. 
+
+We want to drop the lowest score bfore getting the `mean()`.
+
+How do I find the lowest (minimum) score?
+```{r}
+min(student1)
+```
+
+It does return the lowest score but we want to remove this. The `min()` function doesn't work for student 2 or 3 anyways.
+
+I found the `which.min()` function. Maybe this is more useful?
+
+```{r}
+which.min(student1)
+```
+
+An 8 is returned as the lowest score (90) is in the 8th element of the vector. This can be rewritten as:
+
+```{r}
+# Find the lowest score
+student1[which.min(student1)]
+```
+
+How do you return everything BUT this one value?
+
+Add a minus to get everything BUT that value!
+```{r}
+# Remove the lowest score
+student1[-which.min(student1)]
+```
+
+Now find the mean without that 8th element to get the average with the dropped score!
+
+```{r}
+#Find the mean without the lowest score
+mean(student1[-which.min(student1)])
+```
+You can assign `which.min() ` to a value in order to reduce typing, but it's not necessary.
+
+Use a common shortcut and use `x` as my input.
+```{r}
+x <- student1
+mean(x[-which.min(x)])
+```
+
+If I do this for student 2, will it work?
+
+```{r}
+x <- student2
+mean(x[-which.min(x)])
+```
+
+No; I still get NA.
+
+We still have the problem of missing values.
+
+One idea is to replace NA values with 0. 
+
+We have made something equal another value before, but NAs are a little different.
+
+```{r}
+y <- 1:5
+y[y==3] <- 10000
+y
+```
+
+```{r}
+y <- c(1, 2, NA, 3, 4, 5)
+y == NA
+```
+
+This does not work.
+
+Use the `is.na()` function to replace 
+
+```{r}
+y
+is.na(y)
+```
+
+How can I remove the NA elements from the vector?
+
+```{r}
+#y[is.na(y)]
+# putting an exclamation point in front of the vector flips it
+!c(F,F,F)
+```
+
+```{r}
+y[!is.na(y)]
+```
+
+```{r}
+x <- student1
+
+#change NA values to 0
+x[ is.na(x)] <- 0
+#find and remove min value and get mean
+mean(x[-which.min(x)])
+```
+
+```{r}
+x <- student2
+
+#change NA values to 0
+x[ is.na(x)] <- 0
+#find and remove min value and get mean
+mean(x[-which.min(x)])
+
+x <- student3
+
+#change NA values to 0
+x[ is.na(x)] <- 0
+#find and remove min value and get mean
+mean(x[-which.min(x)])
+```
+
+Last step now that I have my working code snippet is to make my `grade()` function.
+
+```{r}
+grade <- function(x) {
+  x[ is.na(x)] <- 0
+  mean(x[-which.min(x)])
+}
+```
+
+Test out the function!
+```{r}
+grade(student1)
+grade(student2)
+grade(student3)
+```
+
+Now read the online gradebook file (CSV file)
+
+```{r}
+url <- "https://tinyurl.com/gradeinput"
+gradebook <- read.csv(url)
+```
+
+rename the column of the first column to be the names of the students
+```{r}
+gradebook <- read.csv(url, row.names = 1)
+head(gradebook)
+```
+
+Can use the ? function to help understand the function. If you don't understand, can also use claude ai to get the explanation.
+
+Use what we learned to print out our results!
+```{r}
+results <- apply(gradebook, 1 , grade)
+results
+```
+
+Q2. Using your grade() function and the supplied gradebook, Who is the top scoring student overall in the gradebook? 
+```{r}
+max(results)
+which.max(results)
+```
+
+Q3. From your analysis of the gradebook, which homework was toughest on students (i.e. obtained the lowest scores overall?
+
+```{r}
+grade2 <- function(x) {
+  x[ is.na(x)] <- 0
+  mean(x)
+}
+apply(gradebook, 2, grade2)
+which.min(apply(gradebook, 2, grade2))
+```
+
+you could also use the `mean()` function IF you add some more arguments! Applying arguments after the function will apply the arguments to that function.
+```{r}
+apply(gradebook, 2, mean, na.rm = T)
+```
+
+```{r}
+which.min(apply(gradebook, 2, mean, na.rm = T))
+```
+
+Mean is super sensitive to outliers/extreme values. Let's use the sum function to see total summed scores.
+```{r}
+which.min(apply(gradebook, 2, sum, na.rm = T))
+```
+
+
+Q4. Optional Extension: From your analysis of the gradebook, which homework was most predictive of overall score (i.e. highest correlation with average grade score)?
+
+another way (making NA = 0)
+```{r}
+#make all NA (on mask) 0
+mask <- gradebook
+mask[is.na(mask)] <- 0
+mask
+```
+
+we can use the `cor()` function for correlation analyses
+
+```{r}
+#does the score the student got for hw1 correlate with their results?
+cor(gradebook$hw1, results)
+```
+
+mid correlation; what about the others?
+
+```{r}
+cor(mask$hw5, results)
+cor(mask$hw4, results)
+cor(mask$hw3, results)
+cor(mask$hw2, results)
+```
+
+Above 0.6 is high correlation!
+
+Need to use the `apply()` function to run this analysis over the whole course (ie. masked gradebook)
+```{r}
+#apply(mask, 2, cor)
+#this does not work as cor needs an x and a y; add the argument of y after cor (results) with a comma
+
+apply(mask, 2, cor, results)
+```
+
