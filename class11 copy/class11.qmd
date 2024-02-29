@@ -1,0 +1,133 @@
+---
+title: "class11"
+author: "Laurie Chang A16891192"
+format: pdf
+editor: visual
+---
+
+AlphaFold has changed the game for protein structure prediction and allows anyone with sufficient bioinformatics skills to predict he structure of virtually any protein.
+
+We can AlphaFold via GoogleColab at:
+https://github.com/sokrypton/ColabFold
+
+In particular, we used their AlphaFold2_mmseqa2 version that uses mmseqs2 rather than HMMMer for sequence search.
+https://colab.research.google.com/github/sokrypton/ColabFold/blob/main/AlphaFold2.ipynb
+
+The main outputs include a set of **PDB structure files** along with matching **JSON format files** that tell us how good the resulting models might be. 
+
+Let's start by loading these structures up in Mol*.
+
+```{r}
+
+results_dir <- "test_23119/"
+
+pdb.files <- list.files(path = results_dir, pattern = "*.pdb", full.names = TRUE)
+
+basename(pdb.files)
+
+```
+```{r}
+library(bio3d)
+
+pdbs <- pdbaln(pdb.files, fit = TRUE, exefile = "msa")
+pdbs
+```
+
+```{r}
+rd <- rmsd(pdbs, fit = TRUE)
+```
+
+```{r}
+range(rd)
+```
+
+```{r}
+library(pheatmap)
+
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+
+```{r}
+pdb <- read.pdb("1hsg")
+```
+
+```{r}
+plotb3(pdbs$b[1,], typ="l", lwd=2, sse=pdb)
+points(pdbs$b[2,], typ="l", col="red")
+points(pdbs$b[3,], typ="l", col="blue")
+points(pdbs$b[4,], typ="l", col="darkgreen")
+points(pdbs$b[5,], typ="l", col="orange")
+abline(v=100, col="gray")
+```
+
+```{r}
+core <- core.find(pdbs)
+```
+
+```{r}
+core.inds <- print(core, vol=0.5)
+```
+
+```{r}
+xyz <- pdbfit(pdbs, core.inds, outpath="corefit_structures")
+```
+
+
+```{r}
+rf <- rmsf(xyz)
+
+plotb3(rf, sse=pdb)
+abline(v=100, col="gray", ylab="RMSF")
+```
+
+## Predicted Alignment Error for domains
+
+```{r}
+library(jsonlite)
+
+pae_files <- list.files (path = results_dir,
+                         pattern = ".*model.*\\.json",
+                         full.names = TRUE)
+```
+
+```{r}
+pae1 <- read_json(pae_files[1],simplifyVector = TRUE)
+pae5 <- read_json(pae_files[5],simplifyVector = TRUE)
+
+attributes(pae1)
+
+head(pae1$plddt)
+```
+```{r}
+pae1$max_pae
+
+pae5$max_pae
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)")
+
+```
+
+```{r}
+plot.dmat(pae5$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+

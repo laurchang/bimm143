@@ -1,0 +1,262 @@
+---
+title: "class08"
+author: Laurie Chang A16891192
+format: pdf
+editor: visual
+---
+
+Before we get stuck into project work we will have a quick look at applying PCA ro some example RNASeq data (tail end of lab 7).
+
+Read the data:
+
+```{r}
+url2 <- "https://tinyurl.com/expression-CSV"
+rna.data <- read.csv(url2, row.names=1)
+head(rna.data)
+```
+
+> Q. How many genes are in this dataset?
+
+```{r}
+nrow(rna.data)
+```
+
+## Run PCA
+
+```{r}
+## Again we have to take the transpose of our data 
+pca <- prcomp(t(rna.data), scale=TRUE)
+ 
+## Simple un polished plot of pc1 and pc2
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2")
+```
+
+```{r}
+summary(pca)
+```
+
+```{r}
+# we have 5 wt and 5 ko samples
+mycols <- c(rep("blue", 5), rep("red", 5))
+mycols
+
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", col = mycols)
+```
+
+I could examine which genes contribute most to this first PC
+
+```{r}
+pca$rotation[,1]
+```
+
+> Q. take absolute value then sort it; top 6 genes that contribute the most?
+
+```{r}
+head(sort(abs(pca$rotation[,1]), decreasing = T))
+```
+
+## Analysis of Breast Cancer RNA data
+
+Read the data:
+
+```{r}
+# Save your input data file into your Project directory
+fna.data <- "WisconsinCancer.csv"
+
+# Complete the following code to input the data and store as wisc.df
+wisc.df <- read.csv(fna.data, row.names=1)
+```
+
+Note that the first column here wisc.df\$diagnosis is a pthologist provided expert diagnosis.
+
+```{r}
+diagnosis <- as.factor(wisc.df$diagnosis)
+```
+
+Now I want to make sure I remove that column from my dataset for analysis
+
+```{r}
+wisc.data <- wisc.df[,-1]
+head(wisc.data)
+
+```
+
+> Q1. How many observations are in this dataset?
+
+```{r}
+nrow(wisc.data)
+```
+569 rows
+
+> Q2. How many of the observations have a malignant diagnosis?
+
+```{r}
+table(wisc.df$diagnosis)
+```
+
+212 observations have a malignant diagnosis
+
+> Q3. How many variables/features in the data are suffixed with \_mean?
+
+```{r}
+length(grep("_mean", colnames(wisc.data)))
+```
+10 variables
+
+adding a `value = TRUE` argument will print the names of the coluumns that have the match
+
+## Principal Component Analysis
+
+Here we will use `prcomp()` on the `wisc.data` obkect - the one without the diagnosis column.
+
+First we have to decide whether to use the `scale=+ TRUE` argument when we run `prcomp()`.
+
+We can look at the means and the sd of each column. If they are similar, then we are all good to go. If not, we should use `scale = TRUE`
+
+```{r}
+colMeans(wisc.data)
+```
+
+Means are pretty different.
+
+```{r}
+apply(wisc.data,  2, sd)
+```
+
+These are also pretty different. As a result, we should `scale = TRUE`.
+
+```{r}
+wisc.pr <- prcomp(wisc.data, scale = TRUE)
+summary(wisc.pr)
+```
+
+Capturing 44% in the first PC is pretty good; that combined with PC2 and PC3 (through a 3D plot) covers 73% of the variance, which is pretty good!
+
+> Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+44.27%
+
+> Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+3 PCs captured 72.64%.
+
+> Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+7 PCs captured 91.01%.
+
+### Plotting the PCA results
+
+```{r}
+biplot(wisc.pr)
+```
+
+Usually made for smaller datasets, this is a big mess!
+
+We need to make our own plot.
+
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col = diagnosis)
+```
+
+```{r}
+library(ggplot2)
+
+pc <- as.data.frame(wisc.pr$x)
+
+ggplot(pc) +
+    aes(PC1, PC2, col = diagnosis) +
+  geom_point()
+```
+
+## Communicating PCA results
+
+> Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr\$rotation\[,1\]) for the feature concave.points_mean?
+
+```{r}
+wisc.pr$rotation["concave.points_mean",1]
+```
+-0.2608538
+
+> Q10. What is the minimum number of principal components required to explain 80% of the variance of the data?
+
+```{r}
+tbl <- summary(wisc.pr)
+tbl$importance[3,] > 0.8
+
+which(tbl$importance[3,] > 0.8)[1]
+```
+
+Takes 5 PCs to explain 84.73% of the variance of the data.
+
+##Hierarchial clustering
+
+The main function for Hierarchial clustering is called `hclust()`; it takes a distance matrix as input.
+
+```{r}
+d <- dist(scale( wisc.data))
+wisc.hclust <- hclust(d)
+plot(wisc.hclust)
+```
+
+That result does not look good!!
+
+```{r}
+plot(wisc.hclust)
+abline(h = 18, col = "red")
+grps <- cutree(wisc.hclust, h = 18)
+table(grps)
+```
+
+Unlikely that these will produce good results.
+
+Come back here later to see how our cluster groups correspond to M or B groups.
+
+## 5. Combining methods
+
+Here we will perform clustering on our PCA results rather than the original data.
+
+In other words, we will cluster using `wisc.pr$x` - our new better variables or PCs. We can choose as many or as few PCs to use as we like. It is your call!
+
+```{r}
+d.pc <- dist(wisc.pr$x[, 1:3])
+
+wisc.pr.hclust <- hclust(d.pc, method = "ward.D2")
+plot(wisc.pr.hclust)
+abline(h = 80, col = "red")
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, h= 80)
+table(grps)
+```
+
+We can use `table()` function to make a cross-table as well as just a count table.
+
+```{r}
+table(grps, diagnosis)
+```
+
+Showing you the clustering based on the diagnosis variable (out of the 357 benign, 333 belong in group 2, etc.).
+
+The results indicate that our cluster 1 mostly captures cancer (M) and our cluster 2 mainly captures healthy (B) samples/individuals.
+
+## 7. Prediction
+
+```{r}
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+Make predictions from what we found from Wisconson to see where these new people lie.
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+
+> Q18. Which of these new patients should we prioritize for follow up based on your results?
+
+Should be worried about patient 2 since they have characteristics of cells that look like other malignent cells.

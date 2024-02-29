@@ -1,0 +1,50 @@
+---
+title: "class12"
+author: "Laurie Chang A16891192"
+format: pdf
+editor: visual
+---
+
+##Section 4 Population Scale Analysis
+
+>Q13. Read this file into R and determine the sample size for each genotype and their corresponding median expression levels for each of these genotypes.
+
+```{r}
+expr <- read.table("rs8067378_ENSG00000172057.6.txt")
+head(expr)
+```
+
+```{r}
+nrow(expr)
+```
+
+```{r}
+table(expr$geno)
+```
+
+There are 108 individuals who have the A/A genotype, 233 individuals with the A/G genotype, and 121 individuals with the G/G genotype.
+
+```{r}
+median_expression <- aggregate(expr$exp ~ expr$geno, data = expr, FUN = median)
+median_expression
+```
+
+The median expression level for the A/A genotype is 31.24847.
+The median expression level for the A/G genotype is 25.06486.
+The median expression level for the G/G genotype is 20.07363.
+
+>Q14: Generate a boxplot with a box per genotype, what could you infer from the relative expression value between A/A and G/G displayed in this plot? Does the SNP effect the expression of ORMDL3?
+
+Let's make a boxplot!
+
+```{r}
+library(ggplot2)
+
+ggplot(expr) + 
+  aes(x = geno, y = exp, fill = geno) +
+  geom_boxplot(notch = TRUE)
+ 
+```
+
+I can infer that there is a significant decrease in expression in the G/G phenotype in comparison to the A/A phenotype. It appears the SNP does effect the expression of ORMDL3. 
+

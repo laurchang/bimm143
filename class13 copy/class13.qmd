@@ -1,0 +1,412 @@
+---
+title: "class13"
+author: "Laurie Chang A16891192"
+format: pdf
+editor: visual
+---
+
+In today's class we will explorea and analyze data from a published RNA-seq experiment where aireay smooth muscle cells were treated with dexamethasone, a synthestic glucocorticoid steroid with anti-inflammatory effects (Himes et al. 2014).
+
+##Bioconductor Set up
+
+```{r}
+library(BiocManager)
+library(DESeq2)
+```
+
+
+##Data Import
+
+We have 2 input files, so called "count data" and "col data".
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", row.names = 1)
+metadata <- read.csv(file = "airway_metadata.csv")
+```
+
+```{r}
+head(counts)
+```
+
+```{r}
+head(metadata)
+```
+
+>Q1. How many genes are in this dataset?
+
+```{r}
+nrow(counts)
+```
+
+There are 38694 genes in this dataset.
+
+>Q2. How many ‘control’ cell lines do we have?
+
+```{r}
+table(metadata$dex)
+```
+
+```{r}
+metadata$dex == "control"
+sum(metadata$dex == "control")
+```
+
+There are 4 control cell lines.
+
+##Toy Differential gene expression
+
+Time to do some analysis.
+
+We have 4 control and 4 treated samples/experiments/columns.
+
+Make sure the metadata id column matches the columns in our count data.
+
+```{r}
+colnames(counts)
+```
+
+```{r}
+metadata$id
+```
+
+```{r}
+colnames(counts) == metadata$id
+```
+
+To check that all elements of a vector are TRUE we can use the `all()` function.
+
+```{r}
+all(c(T, T, T, F))
+```
+
+```{r}
+all(colnames(counts) == metadata$id)
+```
+
+To start, I will calculate the `control.mean` and `treated.mean` values and compare them.
+
+- Identify and extract the `control` only columns  
+- Determine the mean value for each gene (i.e. row)  
+- Do the same for `treated`  
+
+```{r}
+library(dplyr)
+control <- metadata %>% filter(dex == "control")
+control.counts <- counts %>% select(control$id)
+control.mean <- rowSums(control.counts)/4
+head(control.mean)
+```
+
+
+```{r}
+#Where does it tell me which columns are control?
+control.inds <- metadata$dex == "control"
+control.counts <- counts[ , control.inds]
+#use 1 to mean the rows, 2 to mean the columns
+control.mean <- apply(control.counts, 1, mean)
+head(control.mean)
+```
+
+Do the same for the treated columns!
+
+```{r}
+#Where does it tell me which columns are control?
+treated.inds <- metadata$dex == "treated"
+treated.counts <- counts[ , treated.inds]
+#use 1 to mean the rows, 2 to mean the columns
+treated.mean <- apply(treated.counts, 1, mean)
+head(treated.mean)
+```
+
+Let's store these together for ease of book-keeping
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+```
+
+Have a quick view of this data:
+
+```{r}
+plot(meancounts,
+     log = "xy")
+```
+
+I want to compare the treated and the control values here and we will use fold change in log2 units to do so. 
+
+log2(Treated/Control)
+
+
+No difference:
+
+```{r}
+log2(20/20)
+```
+
+A doubling in the treated:
+
+```{r}
+log2(20/10)
+```
+
+A halving of the treated compared to the control:
+
+```{r}
+log2(5/10)
+```
+
+Positive fold change means upregulation, negative fold change means down regulation.
+
+A common rule of thumb cut off for callinf a gene "differentially expressed" is a log2 fold-change value of either > +2  for "upregulated" or <-2 for "downregulated".
+
+
+```{r}
+log2fc <- log2(meancounts$treated.mean/meancounts$control.mean)
+meancounts$log2fc <- log2fc
+```
+
+```{r}
+head(meancounts)
+```
+
+We first need to remove zero count genes - as we can't say anything about these genes anyways and their division of log values are messing things up (divide by zero) or the -infinity log problem.
+
+```{r}
+head(meancounts[, 1:2] == 0)
+# when summed across the row, should be summing to 0. if a 1 or 2, then there is a 0 somewhere
+
+to.rm.ind <- rowSums(meancounts[, 1:2] == 0) > 0
+mycounts <- meancounts[!to.rm.ind, ]
+
+```
+
+>Q. How many genes do we have left that we can say something about (i.e. they don't have any zero counts)?
+
+```{r}
+nrow(mycounts)
+```
+
+Using our threshold of +2/-2:
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+
+
+>Q8. Using the up.ind vector above can you determine how many up regulated genes we have at the greater than 2 fc level?
+
+```{r}
+sum(up.ind)
+```
+There are 250 upregulated genes we have at the greater than 2fc level.
+
+>Q9. Using the down.ind vector above can you determine how many down regulated genes we have at the greater than 2 fc level?
+
+```{r}
+sum(down.ind)
+```
+
+There are 367 downregulated genes we have at the less than -2fc level.
+
+>Q10. Do you trust these results? Why or why not?
+
+Fold change only shows us how big the change is. We also want to know which changes are significant.
+
+No we are missing statistics! Are these differences significant?
+
+## DESeq analysis
+
+Let's do this properly with the help of DESeq2 package
+
+```{r}
+#| message: false
+
+library(DESeq2)
+```
+
+We have to use a specific data object for working with DESeq.
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = metadata,
+                               design = ~dex)
+```
+
+Run our main analysis with the `DESeq()` function
+
+```{r}
+dds <- DESeq(dds)
+```
+
+To get the results out of our `dds` object, we can use DESeq function called `results()` which will return a dataset for us
+
+```{r}
+res <- results(dds)
+head(res)
+```
+- base mean tells us the mean of the entire row across  
+- p-adjust and p-value and stat are the statistical analysis  
+- the last column is the one we want; p-value adjusted  
+  - to correct for the rate of false positives that come with increasing the amount of testing (multiple testing correction)
+  
+
+## Volcano Plot
+
+A very common and useful summary results figure from this type of analysis is called a volcano plot - a plot of log2FC vs. p-value. We use the `padj`- the adjusted p-value.
+
+```{r}
+plot(res$log2FoldChange, res$padj)
+```
+
+```{r}
+plot(res$log2FoldChange, log(res$padj))
+```
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+```
+
+
+Add some color and some labels
+
+```{r}
+mycols <- rep("gray", nrow(res))
+
+mycols[res$log2FoldChange > 2] <- "blue"
+mycols[res$log2FoldChange < -2] <- "blue"
+mycols[res$padj > 0.05] <- "gray"
+
+plot(res$log2FoldChange, -log(res$padj),
+     col = mycols,
+     xlab = "log2(Fold Change)",
+     ylab = "-log(P-value)"
+     )
+
+abline(v = c(-2, +2), lty = 2)
+abline(h = - log(0.05))
+```
+
+## Add Annotation data
+
+```{r}
+head(res)
+```
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+
+columns(org.Hs.eg.db)
+```
+
+Creating a new column in our res object
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="SYMBOL",          # The new format we want to add
+                     multiVals="first")
+
+head(res)
+```
+
+There is a new column with the gene name. 
+
+Multivals:
+- first is the default, you don't need to include  
+- multiple variants can be annotated in different databases (protein database vs. gene)  
+- default is to return the first most relevant (one to one mapping vs. one to many mapping)\\
+
+I also want entrez identifiers
+
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="ENTREZID",          # The new format we want to add
+                     multiVals="first")
+
+head(res)
+```
+
+```{r}
+res$name <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="GENENAME",          # The new format we want to add
+                     multiVals="first")
+
+head(res)
+```
+
+
+## Pathway Analysis
+
+Now that I have added the necessary annotation data, I can talk to different databases that use these IDs.
+
+We will use the `gage` package to do geneset analysis (a.k.a. pathway analysis, geneset enrichment, overlap analysis)
+
+```{r}
+library(pathview) #draws the pictures
+library(gage)
+library(gageData) #has the pathway information
+```
+
+We will use KEGG first.
+
+```{r}
+data(kegg.sets.hs)
+
+#Examine the first 2 pathways in this kegg set for humans
+head(kegg.sets.hs, 2)
+```
+
+The main gage() function requires a named vector of fold changes, where the names of the values are the Entrez gene IDs.
+
+```{r}
+foldchanges <- res$log2FoldChange
+names(foldchanges) <- res$entrez  #adds names on the vector
+head(foldchanges)
+```
+
+Run the analysis 
+
+```{r}
+# Get the results
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+Let's look at what is in our results here
+  attributes will tell you what is inside something
+
+```{r}
+attributes(keggres)
+```
+
+```{r}
+#look at the first three down (less) pathways
+head(keggres$less, 3)
+```
+
+I can now use the returned pathway IDs from KEGG as input to the `pathview` package to make pathway figures with our DEGs highlighted.
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa05310")
+```
+
+![](hsa05310.pathview.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

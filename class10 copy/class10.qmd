@@ -1,0 +1,145 @@
+---
+title: "class10"
+author: "Laurie Chang A16891192"
+format: pdf
+editor: visual
+---
+
+## The PDB Database
+
+Here we examine the sie and composition of the main database of biomolecular structures - the PDB.
+
+Get a CSV file from the PDB and read it into R.
+
+```{r}
+pdbstats <- read.csv("Data Export Summary.csv", row.names = 1)
+head(pdbstats)
+```
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+```{r}
+((182348 + 18817)/215684)*100
+```
+
+My pdbstats data frame has numbers with commas in them. This may cause us problems; let's see:
+
+```{r}
+pdbstats$X.ray
+```
+
+These are not seen as numbers! How do we convert characters to numbers?
+
+The function `as.numeric` does not work with commas.
+
+`gsub()` function to remove commas from the column, then convert the column to numeric values using `as.numeric`.
+
+`gsub()`
+
+inside the parenthesis ("what you are looking for", "replacement", "column")
+
+```{r}
+pdbstats$X.ray <- gsub(",", "", pdbstats$X.ray)
+head(pdbstats$X.ray)
+```
+
+```{r}
+pdbstats$X.ray <- as.numeric(pdbstats$X.ray)
+head(pdbstats$X.ray)
+```
+
+Turn this into a function in order to complete this for all the other columns!
+
+```{r}
+commasum <- function(x) {
+  sum(as.numeric(gsub(",", "", x)))
+}
+
+commasum(pdbstats$X.ray)
+```
+
+Apply this for all the columns!
+
+```{r}
+totals.column <- apply(pdbstats, 2, commasum)
+
+totals.column["Total"]
+```
+
+```{r}
+round(totals.column/totals.column["Total"]*100, 2)
+```
+
+93.26839% of the structures in the PDB are solved by X-ray and Electron Microscopy.
+
+> Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+((186898 + 11559 + 12621)/215684)*100
+```
+
+97.86447% of structures in the PDB are protein.
+
+## Visualizing Protein Structure
+
+We will learn the basics of Mol\* (mol-star).
+
+We will play with PDB code 1HSG.
+
+![Hiv-Pr molecule bound to ligand](1HSG copy 3.png)
+
+![O 308](1HSG.png)
+
+![Catalytic Asp25](1HSG copy.png)
+
+![Marked Catalytic Asp25](1HSG copy 2.png)
+
+## Back to R and working with PDB structures
+
+Predict the dynamics (flexibility) of an important protein:
+
+```{r}
+library(bio3d)
+
+hiv <- read.pdb("1hsg")
+hiv
+```
+
+
+```{r}
+head(hiv$atom)
+```
+
+```{r}
+pdbseq(hiv)
+```
+
+Here we will do a Normal Mode Analysis (NMA) to predict functional motions of a kinase protein.
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+```{r}
+modes <- nma(adk)
+plot(modes)
+```
+
+Make a "movie" called a trajectory of the predicted motions:
+
+
+```{r}
+mktrj(modes, file="adk_m7.pdb")
+```
+
+Then I can open this file in Mol*...
+
+
+
+
+
+
+
+
+
