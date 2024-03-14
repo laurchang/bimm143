@@ -9,7 +9,7 @@ Class work from W24 for [BIMM143 at UC San Diego](https://bioboot.github.io/bimm
 
 - class 6: [R functions and packages](https://github.com/laurchang/bimm143/blob/main/class06/class06.pdf)
 
-- class 7: [Introduction to machine learning for Bioinformatics 1](Introduction to machine learning for Bioinformatics 1)
+- class 7: [Introduction to machine learning for Bioinformatics 1](https://github.com/laurchang/bimm143/blob/main/lab07%20copy/class07.pdf)
 
 - class 8: [Unsupervised learning mini-project](https://github.com/laurchang/bimm143/blob/main/class08%20copy/class08.pdf)
 
