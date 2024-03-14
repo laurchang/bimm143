@@ -1,0 +1,24 @@
+This is just a text editor
+
+pwd: print working directory
+ls : list files
+cd : change directory
+mkdir: make a new directory
+rm : remove/delete files
+nano : a very basic text editor
+
+Instance ID
+i-02fd6bb56e57888c1 (bimm143_laurie)
+
+public IP address
+35.87.60.178
+
+Run this command, if necessary, to ensure your key is not publicly viewable.
+ chmod 400 "bimm143_laurie.pem"
+Connect to your instance using its Public DNS:
+ ec2-35-87-60-178.us-west-2.compute.amazonaws.com
+
+Example:
+ ssh -i "bimm143_laurie.pem" ubuntu@ec2-35-87-60-178.us-west-2.compute.amazonaws.com
+
+
