@@ -27,11 +27,3 @@ Class work from W24 for [BIMM143 at UC San Diego](https://bioboot.github.io/bimm
 
 - class 15: Hands-on with Git and GitHub
 
-- class 16:
-
-- class 17:
-
-- class 18:
-
-- class 19:
-
